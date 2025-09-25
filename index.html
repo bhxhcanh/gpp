@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản lý Nhà thuốc</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="./index.css">
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="loading-indicator">
+        <div class="spinner"></div>
+        <p>Đang tải ứng dụng...</p>
+    </div>
+
+    <div id="config-error-banner" class="config-error-banner hidden">
+        <span class="material-symbols-outlined">error</span>
+        <div class="error-text">
+            <strong>Lỗi Cấu Hình!</strong>
+            <p>Ứng dụng chưa được kết nối với backend. Vui lòng cập nhật biến <strong>GAS_AUTH_URL</strong> trong file <code>scriptLogin.js</code> với URL triển khai Google Apps Script quản lý của bạn.</p>
+        </div>
+    </div>
+
+    <div id="login-page">
+        <!-- Login Container -->
+        <div id="login-container" class="login-box">
+            <h1>Đăng nhập</h1>
+            <p>Chào mừng trở lại!</p>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="username">Tên đăng nhập</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Đăng nhập</button>
+            </form>
+            <p id="login-error" class="hidden" style="color: var(--danger-color); margin-top: 15px;"></p>
+            <a id="show-register" class="toggle-link">Chưa có tài khoản? Đăng ký ngay</a>
+        </div>
+
+        <!-- Register Container -->
+        <div id="register-container" class="login-box hidden">
+            <h1>Đăng ký nhà thuốc</h1>
+            <p>Bắt đầu quản lý hiệu quả ngay hôm nay.</p>
+            <form id="register-form">
+                <div class="input-group">
+                    <label for="reg-tennhathuoc">Tên nhà thuốc</label>
+                    <input type="text" id="reg-tennhathuoc" required>
+                </div>
+                 <div class="input-group">
+                    <label for="reg-username">Tên đăng nhập chính (quản trị)</label>
+                    <input type="text" id="reg-username" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-password">Mật khẩu</label>
+                    <input type="password" id="reg-password" required minlength="4">
+                </div>
+                 <div class="input-group">
+                    <label for="reg-confirm-password">Xác nhận mật khẩu</label>
+                    <input type="password" id="reg-confirm-password" required minlength="4">
+                </div>
+                 <div class="input-group">
+                    <label for="reg-hoten">Họ tên chủ nhà thuốc</label>
+                    <input type="text" id="reg-hoten" required>
+                </div>
+                 <div class="input-group">
+                    <label for="reg-email">Email liên hệ</label>
+                    <input type="email" id="reg-email" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-sdt">Số điện thoại</label>
+                    <input type="tel" id="reg-sdt" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Đăng ký</button>
+            </form>
+            <p id="register-message" class="hidden" style="margin-top: 15px;"></p>
+            <a id="show-login" class="toggle-link">Đã có tài khoản? Đăng nhập</a>
+        </div>
+    </div>
+
+
+    <div id="app-container" class="hidden">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 id="sidebar-pharmacy-name">QL Nhà thuốc</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#tongquan" class="nav-link active" data-page="tongquan"><span class="material-symbols-outlined">dashboard</span>Tổng quan</a></li>
+                    <li><a href="#banhang" class="nav-link" data-page="banhang"><span class="material-symbols-outlined">point_of_sale</span>Bán hàng</a></li>
+                    <li><a href="#hoadon" class="nav-link" data-page="hoadon"><span class="material-symbols-outlined">receipt_long</span>Hóa đơn</a></li>
+                    <li class="nav-item-group">
+                        <a href="#" class="nav-link has-submenu" data-page="kho"><span class="material-symbols-outlined">inventory_2</span>Quản lý kho <span class="material-symbols-outlined submenu-arrow">expand_more</span></a>
+                        <ul class="sub-menu" id="submenu-kho">
+                            <li><a href="#danhsachphieunhap" class="nav-link" data-page="danhsachphieunhap">Phiếu nhập kho</a></li>
+                            <li><a href="#xuatrancc" class="nav-link" data-page="xuatrancc">Xuất trả NCC</a></li>
+                            <li><a href="#xuathuy" class="nav-link" data-page="xuathuy">Xuất hủy</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#soquy" class="nav-link" data-page="soquy"><span class="material-symbols-outlined">account_balance_wallet</span>Sổ quỹ</a></li>
+                    <li><a href="#baocao" class="nav-link" data-page="baocao"><span class="material-symbols-outlined">analytics</span>Báo cáo</a></li>
+                    <li><a href="#danhmuc" class="nav-link" data-page="danhmuc"><span class="material-symbols-outlined">category</span>Danh mục</a></li>
+                    <li><a href="#quantri" class="nav-link" data-page="quantri"><span class="material-symbols-outlined">admin_panel_settings</span>Quản trị</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="header">
+                <div class="header-title">
+                    <h1 id="page-title">Tổng quan</h1>
+                </div>
+                <div class="header-user">
+                    <div id="connection-status" class="connection-status" title="Click để kiểm tra lại kết nối">
+                        <span class="status-icon"></span>
+                        <span id="status-text" class="status-text"></span>
+                    </div>
+                    <div class="user-menu" id="user-menu">
+                        <div class="user-menu-trigger">
+                            <span id="user-greeting">Chào, Dược sĩ</span>
+                            <span class="material-symbols-outlined">account_circle</span>
+                        </div>
+                        <div class="user-menu-dropdown" id="user-menu-dropdown">
+                            <a href="#" id="user-info-btn" class="dropdown-item">
+                                <span class="material-symbols-outlined">person</span>
+                                <span>Thông tin cá nhân</span>
+                            </a>
+                            <a href="#" id="change-password-btn" class="dropdown-item">
+                                <span class="material-symbols-outlined">lock</span>
+                                <span>Đổi mật khẩu</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" id="logout-btn" class="dropdown-item">
+                                <span class="material-symbols-outlined">logout</span>
+                                <span>Đăng xuất</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main id="main-content" class="container">
+                <!-- Nội dung các trang sẽ được render ở đây -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="modal-container" class="modal-container hidden">
+        <div class="modal-content">
+            <button id="modal-close-btn" class="modal-close-btn">&times;</button>
+            <div id="modal-body">
+                <!-- Nội dung modal sẽ được chèn vào đây bằng JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="scriptLogin.js"></script>
+    <script src="script.js"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
