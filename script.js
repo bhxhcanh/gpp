@@ -129,6 +129,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const getCachedDanhMuc = async (tenDanhMuc, forceRefresh = false) => {
         if (!forceRefresh && appState.cache[tenDanhMuc]) return appState.cache[tenDanhMuc];
         const data = await callAppsScript('getDanhMuc', { tenDanhMuc });
+
+        // Sort specific lists by name before caching
+        if (tenDanhMuc === 'DanhMucNhaCungCap') {
+            data.sort((a, b) => a.TenNhaCungCap.localeCompare(b.TenNhaCungCap, 'vi'));
+        } else if (tenDanhMuc === 'DanhMucNhaSanXuat') {
+            data.sort((a, b) => a.TenNhaSanXuat.localeCompare(b.TenNhaSanXuat, 'vi'));
+        }
+
         appState.cache[tenDanhMuc] = data;
         return data;
     };
