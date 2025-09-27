@@ -6,8 +6,9 @@ function initializePharmacyModule(app) {
     // --- PAGE RENDERERS ---
     const updatePageTitle = (title) => pageTitle.textContent = title;
 
-    function generatePrintPage(printConfig) {
+    function generatePrintPage(printConfig, pageLayout) {
         const { tenNhaThuoc, startPosition, items } = printConfig;
+        const { width, height, margin, gap } = pageLayout;
     
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
@@ -25,8 +26,8 @@ function initializePharmacyModule(app) {
         const printStyles = `
             @media print {
                 @page {
-                    size: 110mm auto; /* Custom width for thermal printers */
-                    margin: 0;
+                    size: ${width}mm ${height.toLowerCase() === 'auto' ? 'auto' : height + 'mm'};
+                    margin: ${margin}mm;
                 }
                 body {
                     margin: 0;
@@ -42,9 +43,8 @@ function initializePharmacyModule(app) {
             .label-grid {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
-                gap: 2mm; /* Adjust gap as needed */
-                width: 110mm;
-                padding: 1mm;
+                gap: ${gap}mm;
+                width: 100%;
                 box-sizing: border-box;
             }
             .label-item, .empty-label {
@@ -206,6 +206,28 @@ function initializePharmacyModule(app) {
                         <tbody>${tableRowsHtml}</tbody>
                     </table>
                 </div>
+
+                <hr style="margin: 20px 0;">
+                <h4 style="margin-bottom: 15px;">Tùy chỉnh bố cục trang in</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div class="input-group">
+                        <label for="print-page-width">Chiều rộng trang (mm)</label>
+                        <input type="number" id="print-page-width" value="110" min="50">
+                    </div>
+                    <div class="input-group">
+                        <label for="print-page-height">Chiều cao trang (mm hoặc 'auto')</label>
+                        <input type="text" id="print-page-height" value="auto">
+                    </div>
+                    <div class="input-group">
+                        <label for="print-margin">Lề trang (mm)</label>
+                        <input type="number" id="print-margin" value="1" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label for="print-gap">Lề giữa các tem (mm)</label>
+                        <input type="number" id="print-gap" value="2" min="0">
+                    </div>
+                </div>
+
                 <div style="text-align: right; margin-top: 20px;">
                     <button type="button" class="btn btn-secondary" onclick="window.app.hideModal()">Hủy</button>
                     <button type="button" class="btn btn-primary" id="generate-print-page-btn">Tạo trang in</button>
@@ -243,8 +265,15 @@ function initializePharmacyModule(app) {
                     startPosition: startPosition,
                     items: itemsToPrint
                 };
+
+                const pageLayout = {
+                    width: document.getElementById('print-page-width').value || '110',
+                    height: document.getElementById('print-page-height').value || 'auto',
+                    margin: document.getElementById('print-margin').value || '1',
+                    gap: document.getElementById('print-gap').value || '2'
+                };
                 
-                generatePrintPage(printConfig);
+                generatePrintPage(printConfig, pageLayout);
                 hideModal();
             });
     
