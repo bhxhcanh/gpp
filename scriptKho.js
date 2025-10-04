@@ -3,12 +3,22 @@ function initializePharmacyModule(app) {
     const mainContent = document.getElementById('main-content');
     const pageTitle = document.getElementById('page-title');
 
+    const removeDiacritics = (str) => {
+        if (!str) return '';
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+    };
+
     // --- PAGE RENDERERS ---
     const updatePageTitle = (title) => pageTitle.textContent = title;
 
     function generatePrintPage(printConfig, pageLayout) {
         const { tenNhaThuoc, startPosition, items } = printConfig;
-        const { width, height, margin, gap } = pageLayout;
+        const { 
+            pageWidth, pageHeight, 
+            marginTop, marginBottom, marginLeft, marginRight, 
+            gap, 
+            labelWidth, labelHeight 
+        } = pageLayout;
     
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
@@ -22,12 +32,17 @@ function initializePharmacyModule(app) {
                 labelsToPrint.push(item);
             }
         });
+
+        // Calculate number of columns dynamically
+        const printablePageWidth = pageWidth - marginLeft - marginRight;
+        const labelWidthWithGap = labelWidth + gap;
+        const numColumns = Math.floor(printablePageWidth / labelWidthWithGap);
     
         const printStyles = `
             @media print {
                 @page {
-                    size: ${width}mm ${height.toLowerCase() === 'auto' ? 'auto' : height + 'mm'};
-                    margin: ${margin}mm;
+                    size: ${pageWidth}mm ${pageHeight.toLowerCase() === 'auto' ? 'auto' : pageHeight + 'mm'};
+                    margin: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
                 }
                 body {
                     margin: 0;
@@ -42,14 +57,16 @@ function initializePharmacyModule(app) {
             }
             .label-grid {
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(${numColumns}, ${labelWidth}mm);
                 gap: ${gap}mm;
+                justify-content: start;
+                align-content: start;
                 width: 100%;
                 box-sizing: border-box;
             }
             .label-item, .empty-label {
-                width: 35mm;
-                height: 25mm;
+                width: ${labelWidth}mm;
+                height: ${labelHeight}mm;
                 box-sizing: border-box;
                 overflow: hidden;
                 display: flex;
@@ -66,9 +83,9 @@ function initializePharmacyModule(app) {
                  }
             }
             .label-item .pharmacy-name { font-size: 6pt; margin: 0; }
-            .label-item .product-name { font-size: 8pt; font-weight: bold; margin: 1px 0; line-height: 1.1; }
-            .label-item .price { font-size: 9pt; font-weight: bold; margin: 1px 0; }
-            .label-item .barcode-container { height: 12mm; display: flex; align-items: center; justify-content: center; }
+            .label-item .product-name { font-size: 6pt; font-weight: bold; margin: 1px 0; line-height: 1.1; }
+            .label-item .price { font-size: 8pt; font-weight: bold; margin: 1px 0; }
+            .label-item .barcode-container { height: 10mm; display: flex; align-items: center; justify-content: center; margin-top: auto; }
             .label-item .note { font-size: 6pt; margin: 0; font-style: italic; }
         `;
         
@@ -108,10 +125,10 @@ function initializePharmacyModule(app) {
                                     if (value) {
                                         JsBarcode(element, value, {
                                             format: "CODE128",
-                                            height: 25,
-                                            width: 1.2,
+                                            height: 20,
+                                            width: 1.0,
                                             displayValue: false,
-                                            margin: 1
+                                            margin: 0.5
                                         });
                                     }
                                 });
@@ -182,8 +199,8 @@ function initializePharmacyModule(app) {
                 <tr data-index="${index}">
                     <td>${item.tenThuoc} (${item.donViNhap})</td>
                     <td>${item.giaBan.toLocaleString('vi-VN')}đ / ${item.donViCoSo}</td>
-                    <td><input type="number" class="label-qty" value="${item.defaultQty}" min="0" style="width: 80px; padding: 5px;"></td>
-                    <td><input type="text" class="label-note" value="${item.ghiChu}" style="width: 100%; padding: 5px;"></td>
+                    <td><input type="number" class="label-qty" value="${item.defaultQty}" min="0" style="width: 80px; padding: 3px;"></td>
+                    <td><input type="text" class="label-note" value="${item.ghiChu}" style="width: 100%; padding: 3px;"></td>
                 </tr>
             `).join('');
     
@@ -208,24 +225,22 @@ function initializePharmacyModule(app) {
                 </div>
 
                 <hr style="margin: 20px 0;">
-                <h4 style="margin-bottom: 15px;">Tùy chỉnh bố cục trang in</h4>
+                <h4 style="margin-bottom: 15px;">Tùy chỉnh bố cục trang in (đang dùng cấu hình đã lưu)</h4>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <div class="input-group">
-                        <label for="print-page-width">Chiều rộng trang (mm)</label>
-                        <input type="number" id="print-page-width" value="110" min="50">
-                    </div>
-                    <div class="input-group">
-                        <label for="print-page-height">Chiều cao trang (mm hoặc 'auto')</label>
-                        <input type="text" id="print-page-height" value="auto">
-                    </div>
-                    <div class="input-group">
-                        <label for="print-margin">Lề trang (mm)</label>
-                        <input type="number" id="print-margin" value="1" min="0">
-                    </div>
-                    <div class="input-group">
-                        <label for="print-gap">Lề giữa các tem (mm)</label>
-                        <input type="number" id="print-gap" value="2" min="0">
-                    </div>
+                    <div class="input-group"><label for="print-page-width">Rộng trang (mm)</label><input type="number" id="print-page-width" value="${settings.print_pageWidth || '110'}"></div>
+                    <div class="input-group"><label for="print-page-height">Cao trang (mm hoặc 'auto')</label><input type="text" id="print-page-height" value="${settings.print_pageHeight || 'auto'}"></div>
+                    <div class="input-group"><label for="print-margin-top">Lề trên (mm)</label><input type="number" id="print-margin-top" value="${settings.print_marginTop || '2'}"></div>
+                    <div class="input-group"><label for="print-margin-bottom">Lề dưới (mm)</label><input type="number" id="print-margin-bottom" value="${settings.print_marginBottom || '1'}"></div>
+                    <div class="input-group"><label for="print-margin-left">Lề trái (mm)</label><input type="number" id="print-margin-left" value="${settings.print_marginLeft || '3'}"></div>
+                    <div class="input-group"><label for="print-margin-right">Lề phải (mm)</label><input type="number" id="print-margin-right" value="${settings.print_marginRight || '2'}"></div>
+                    <div class="input-group"><label for="print-gap">Khoảng cách tem (mm)</label><input type="number" id="print-gap" value="${settings.print_gap || '3'}"></div>
+                </div>
+                
+                <hr style="margin: 20px 0;">
+                <h4 style="margin-bottom: 15px;">Tùy chỉnh kích thước tem</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div class="input-group"><label for="print-label-width">Rộng tem (mm)</label><input type="number" id="print-label-width" value="${settings.print_labelWidth || '32'}"></div>
+                    <div class="input-group"><label for="print-label-height">Cao tem (mm)</label><input type="number" id="print-label-height" value="${settings.print_labelHeight || '16'}"></div>
                 </div>
 
                 <div style="text-align: right; margin-top: 20px;">
@@ -267,10 +282,15 @@ function initializePharmacyModule(app) {
                 };
 
                 const pageLayout = {
-                    width: document.getElementById('print-page-width').value || '110',
-                    height: document.getElementById('print-page-height').value || 'auto',
-                    margin: document.getElementById('print-margin').value || '1',
-                    gap: document.getElementById('print-gap').value || '2'
+                    pageWidth: parseFloat(document.getElementById('print-page-width').value) || 110,
+                    pageHeight: document.getElementById('print-page-height').value || 'auto',
+                    marginTop: parseFloat(document.getElementById('print-margin-top').value) || 0,
+                    marginBottom: parseFloat(document.getElementById('print-margin-bottom').value) || 0,
+                    marginLeft: parseFloat(document.getElementById('print-margin-left').value) || 0,
+                    marginRight: parseFloat(document.getElementById('print-margin-right').value) || 0,
+                    gap: parseFloat(document.getElementById('print-gap').value) || 2,
+                    labelWidth: parseFloat(document.getElementById('print-label-width').value) || 30,
+                    labelHeight: parseFloat(document.getElementById('print-label-height').value) || 18,
                 };
                 
                 generatePrintPage(printConfig, pageLayout);
@@ -448,6 +468,7 @@ function initializePharmacyModule(app) {
                                                 <div class="action-menu-dropdown">
                                                     <a href="#" class="action-item" data-action="view"><span class="material-symbols-outlined">visibility</span>Xem chi tiết</a>
                                                     <a href="#" class="action-item" data-action="print"><span class="material-symbols-outlined">print</span>In phiếu</a>
+                                                    <a href="#" class="action-item" data-action="print-labels"><span class="material-symbols-outlined">label</span>In tem nhãn</a>
                                                     <a href="#" class="action-item" data-action="edit"><span class="material-symbols-outlined">edit</span>Sửa phiếu</a>
                                                     <a href="#" class="action-item" data-action="delete"><span class="material-symbols-outlined">delete</span>Xóa phiếu</a>
                                                 </div>
@@ -484,21 +505,10 @@ function initializePharmacyModule(app) {
         switch (action) {
             case 'view':
                 const modalContent = await renderPhieuNhapDetailForModal(maPhieuNhap);
-                const fullModalContent = `
-                    ${modalContent}
-                    <div style="text-align: right; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-                        <button class="btn btn-primary" id="print-labels-btn" data-ma-pn="${maPhieuNhap}">
-                            <span class="material-symbols-outlined" style="font-size: 1.2rem;">label</span> In tem
-                        </button>
-                    </div>
-                `;
-                showModal(`Chi tiết phiếu nhập ${maPhieuNhap}`, fullModalContent, { size: '800px' });
-                
-                document.getElementById('print-labels-btn').addEventListener('click', (e) => {
-                    const maPN = e.currentTarget.dataset.maPn;
-                    hideModal();
-                    showPrintLabelConfigModal(maPN);
-                });
+                showModal(`Chi tiết phiếu nhập ${maPhieuNhap}`, modalContent, { size: '800px' });
+                break;
+            case 'print-labels':
+                showPrintLabelConfigModal(maPhieuNhap);
                 break;
             case 'print':
                 printPhieuNhap(maPhieuNhap);
@@ -519,6 +529,7 @@ function initializePharmacyModule(app) {
     
         let receiptItems = [];
         let isTyLeManuallyEdited = false;
+        let blockNextSoLoEnter = false;
     
         let danhMucNCC, danhMucThuoc, donViQuyDoi, danhMucDVT, danhMucNHH;
         try {
@@ -571,7 +582,7 @@ function initializePharmacyModule(app) {
                                     <div class="input-group" style="grid-column: 1 / -1; position: relative;">
                                         <label for="item-thuoc-search">Hàng hóa <span style="color:red;">*</span></label>
                                         <div style="display: flex;">
-                                            <input type="text" id="item-thuoc-search" placeholder="Nhập từ khóa để tìm kiếm..." autocomplete="off" style="flex-grow: 1; border-radius: 6px 0 0 6px;">
+                                            <input type="text" id="item-thuoc-search" placeholder="Nhập từ khóa hoặc quét mã vạch..." autocomplete="off" style="flex-grow: 1; border-radius: 6px 0 0 6px;">
                                             <button type="button" id="clear-thuoc-selection" class="btn btn-danger" style="border-radius: 0 6px 6px 0; padding: 10px 12px; display: flex; align-items: center;">&times;</button>
                                         </div>
                                         <input type="hidden" id="item-thuoc-select">
@@ -650,7 +661,8 @@ function initializePharmacyModule(app) {
 
         const nccSelect = document.getElementById('ncc-select');
         nccSelect.innerHTML = `<option value="">-- Chọn nhà cung cấp --</option>
-            ${generateOptions(danhMucNCC, 'MaNhaCungCap', 'TenNhaCungCap', isEditMode ? editData.phieuNhap.MaNhaCungCap : null, 'Thêm mới nhà cung cấp...')}`;
+            ${generateOptions(danhMucNCC, 'MaNhaCungCap', 'TenNhaCungCap', isEditMode ? editData.phieuNhap.MaNhaCungCap : null, 'Thêm mới nhà cung cấp...')}
+        `;
         
         const nhomHangHoaSelect = document.getElementById('nhom-hang-hoa');
         nhomHangHoaSelect.innerHTML = `<option value="">-- Chọn nhóm hàng hóa --</option>
@@ -949,24 +961,31 @@ function initializePharmacyModule(app) {
             });
             
             const handleThuocSearch = async () => {
-                 const term = thuocSearchInput.value.trim().toLowerCase();
-                 const normalizedTerm = term.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+                 const term = thuocSearchInput.value.trim();
                  thuocSuggestionsDiv.innerHTML = '';
                  
-                 if (term.length < 2) {
+                 if (term.length < 2 && !donViQuyDoi.some(dv => dv.MaVach && dv.MaVach === term)) {
                     thuocSuggestionsDiv.style.display = 'none';
                     return;
                  }
                  
+                 const barcodeMatch = donViQuyDoi.find(dv => dv.MaVach && dv.MaVach === term);
+                 if (barcodeMatch) {
+                     blockNextSoLoEnter = true;
+                     await selectThuoc(barcodeMatch.MaThuoc);
+                     return;
+                 }
+
+                 const normalizedTerm = removeDiacritics(term.toLowerCase());
                  const results = danhMucThuoc.filter(thuoc => 
-                    thuoc.TenThuoc.toLowerCase().includes(term) ||
-                    thuoc.TenThuoc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(normalizedTerm) ||
+                    removeDiacritics(thuoc.TenThuoc.toLowerCase()).includes(normalizedTerm) ||
+                    (thuoc.HoatChat && removeDiacritics(thuoc.HoatChat.toLowerCase()).includes(normalizedTerm)) ||
                     (thuoc.SoDangKy && thuoc.SoDangKy.toLowerCase().includes(term))
                  );
 
                  if (results.length > 0) {
-                     thuocSuggestionsDiv.innerHTML = results.slice(0, 10).map(r => 
-                        `<div class="suggestion-item" data-ma-thuoc="${r.MaThuoc}">
+                     thuocSuggestionsDiv.innerHTML = results.slice(0, 10).map((r, index) => 
+                        `<div class="suggestion-item ${index === 0 ? 'selected' : ''}" data-ma-thuoc="${r.MaThuoc}">
                             <strong>${r.TenThuoc}</strong><br>
                             <small>SDK: ${r.SoDangKy || 'N/A'}</small>
                         </div>`
@@ -1015,10 +1034,45 @@ function initializePharmacyModule(app) {
 
                 renderUnitDefinitionTable(maThuoc);
 
-                document.getElementById('so-lo').focus();
+                document.getElementById('don-vi-nhap').focus();
             };
 
             thuocSearchInput.addEventListener('input', handleThuocSearch);
+            
+            thuocSearchInput.addEventListener('keydown', (e) => {
+                const suggestions = thuocSuggestionsDiv.querySelectorAll('.suggestion-item');
+                if (suggestions.length === 0 || thuocSuggestionsDiv.style.display === 'none') return;
+                let selected = thuocSuggestionsDiv.querySelector('.selected');
+                
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (selected && selected.nextElementSibling) {
+                        selected.classList.remove('selected');
+                        selected.nextElementSibling.classList.add('selected');
+                    } else if (!selected && suggestions.length > 0) {
+                        suggestions[0].classList.add('selected');
+                    }
+                } else if (e.key === 'ArrowUp') {
+                     e.preventDefault();
+                    if (selected && selected.previousElementSibling) {
+                        selected.classList.remove('selected');
+                        selected.previousElementSibling.classList.add('selected');
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if(selected) {
+                        const maThuoc = selected.dataset.maThuoc;
+                        if (maThuoc) {
+                            selectThuoc(maThuoc);
+                        } else if (selected.dataset.action === 'add-new-thuoc') {
+                            app.showAddThuocModal(null, (newThuoc) => {
+                                selectThuoc(newThuoc.MaThuoc);
+                            });
+                        }
+                    }
+                }
+            });
+
             thuocSearchInput.addEventListener('blur', () => setTimeout(() => thuocSuggestionsDiv.style.display = 'none', 200));
             
             thuocSuggestionsDiv.addEventListener('click', e => {
@@ -1031,6 +1085,63 @@ function initializePharmacyModule(app) {
                     });
                 } else if (item.dataset.maThuoc) {
                     selectThuoc(item.dataset.maThuoc);
+                }
+            });
+
+            // Input chaining with Enter key
+            const soLoInput = document.getElementById('so-lo');
+            const hsdInput = document.getElementById('han-su-dung');
+            const soLuongInput = document.getElementById('so-luong-nhap');
+            const donGiaInput = document.getElementById('don-gia-nhap');
+            const chietKhauInput = document.getElementById('tong-chiet-khau');
+            const vatInput = document.getElementById('vat-nhap');
+            const addItemBtn = document.getElementById('add-item-btn');
+            
+            soLoInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (blockNextSoLoEnter) {
+                        blockNextSoLoEnter = false;
+                        return;
+                    }
+                    hsdInput.focus();
+                }
+            });
+
+            hsdInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    soLuongInput.focus();
+                    soLuongInput.select();
+                }
+            });
+
+            soLuongInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    donGiaInput.focus();
+                    donGiaInput.select();
+                }
+            });
+
+            donGiaInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    chietKhauInput.focus();
+                    chietKhauInput.select();
+                }
+            });
+             chietKhauInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    vatInput.focus();
+                    vatInput.select();
+                }
+            });
+             vatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addItemBtn.focus();
                 }
             });
             
@@ -1293,14 +1404,298 @@ function initializePharmacyModule(app) {
         }
     }
     
+    // --- PHIẾU XUẤT KHO ---
+    async function renderDanhSachPhieuXuat() {
+        updatePageTitle('Danh sách phiếu xuất kho');
+        mainContent.innerHTML = `<div class="card"><p>Đang tải dữ liệu...</p></div>`;
+        try {
+            const [phieuXuatList, allUsers] = await Promise.all([
+                getCachedDanhMuc('PhieuXuat'),
+                appState.cache['allUsers'] ? Promise.resolve(appState.cache['allUsers']) : callAuthScript('getUsersForAdmin', { username_chinh: appState.currentUser.username_chinh })
+            ]);
+            
+            const userMap = new Map(allUsers.map(user => [user.MaNhanVien, user.HoTen]));
+
+            mainContent.innerHTML = `
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Danh sách phiếu xuất kho</h3>
+                        <button class="btn btn-primary" id="btn-xuat-kho">Tạo Phiếu Xuất Kho</button>
+                    </div>
+                    <div class="card-body table-wrapper">
+                        <table>
+                            <thead><tr><th>Mã PX</th><th>Ngày xuất</th><th>Loại xuất</th><th>Người xuất</th><th>Lý do</th><th class="action-cell">Hành động</th></tr></thead>
+                            <tbody id="phieu-xuat-table-body">
+                                ${phieuXuatList.sort((a, b) => new Date(b.NgayXuat) - new Date(a.NgayXuat)).map(px => `
+                                    <tr data-ma-px="${px.MaPhieuXuat}">
+                                        <td>${px.MaPhieuXuat}</td>
+                                        <td>${new Date(px.NgayXuat).toLocaleString('vi-VN')}</td>
+                                        <td>${px.LoaiXuat}</td>
+                                        <td>${userMap.get(px.NguoiXuat) || px.NguoiXuat}</td>
+                                        <td>${px.LyDo}</td>
+                                        <td class="action-cell">
+                                            <div class="action-menu">
+                                                <button class="btn-actions"><span class="material-symbols-outlined">more_vert</span></button>
+                                                <div class="action-menu-dropdown">
+                                                    <a href="#" class="action-item" data-action="view">Xem chi tiết</a>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('btn-xuat-kho').addEventListener('click', () => {
+                window.location.hash = 'phieuxuatkho-new';
+            });
+            // TODO: Add action handlers for view/delete
+        } catch (error) {
+             mainContent.innerHTML = `<div class="card" style="color: var(--danger-color);"><p><strong>Lỗi tải dữ liệu phiếu xuất:</strong> ${error.message}</p></div>`;
+        }
+    }
+
+    async function renderPhieuXuatKhoForm() {
+        updatePageTitle('Tạo Phiếu Xuất Kho');
+        mainContent.innerHTML = `<div class="card"><p>Đang tải dữ liệu...</p></div>`;
+    
+        let issueItems = [];
+        let availableLotsForSelectedDrug = [];
+    
+        try {
+            const [danhMucThuoc, danhMucNCC] = await Promise.all([
+                getCachedDanhMuc('DanhMucThuoc'),
+                getCachedDanhMuc('DanhMucNhaCungCap')
+            ]);
+    
+            mainContent.innerHTML = `
+                <form id="xuat-kho-form">
+                    <div class="card">
+                        <div class="card-header"><h3>Thông tin chung</h3></div>
+                        <div class="card-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                            <div class="input-group">
+                                <label for="loai-xuat">Loại xuất kho (*)</label>
+                                <select id="loai-xuat" required>
+                                    <option value="Xuất hủy">Xuất hủy</option>
+                                    <option value="Xuất trả NCC">Xuất trả Nhà Cung Cấp</option>
+                                </select>
+                            </div>
+                            <div class="input-group hidden" id="ncc-group">
+                                <label for="ncc-select-xuat">Nhà cung cấp (*)</label>
+                                <select id="ncc-select-xuat">${generateOptions(danhMucNCC, 'MaNhaCungCap', 'TenNhaCungCap', null)}</select>
+                            </div>
+                            <div class="input-group" style="grid-column: 1 / -1;">
+                                <label for="ly-do">Lý do xuất kho (*)</label>
+                                <textarea id="ly-do" rows="2" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <div class="pos-layout" style="align-items: flex-start;">
+                        <div class="pos-main">
+                            <div class="card">
+                                <div class="card-header"><h3>Thêm hàng hóa</h3></div>
+                                <div class="card-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="input-group" style="grid-column: 1 / -1; position: relative;">
+                                        <label>Tìm thuốc (*)</label>
+                                        <input type="text" id="thuoc-search-xuat" placeholder="Tìm theo tên hoặc mã thuốc..." autocomplete="off">
+                                        <div id="thuoc-suggestions-xuat" class="suggestions-dropdown" style="display:none;"></div>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="lot-select">Chọn lô (*)</label>
+                                        <select id="lot-select" disabled><option>Vui lòng chọn thuốc</option></select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="so-luong-xuat">Số lượng xuất (đơn vị cơ sở)</label>
+                                        <input type="number" id="so-luong-xuat" min="1" disabled>
+                                    </div>
+                                    <div style="grid-column: 1 / -1; text-align: right;">
+                                        <button type="button" class="btn btn-primary" id="add-item-xuat-btn" disabled>Thêm vào phiếu</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pos-sidebar">
+                            <div class="card">
+                                <div class="card-header"><h4>Danh sách hàng hóa xuất</h4></div>
+                                <div id="issue-items-list" class="card-body table-wrapper" style="min-height: 200px;"><p>Chưa có hàng hóa.</p></div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <div class="card">
+                        <div class="card-body" style="text-align: right;">
+                            <button type="button" class="btn btn-secondary" id="cancel-xuat-btn" style="margin-right: 10px;">Hủy</button>
+                            <button type="submit" class="btn btn-primary" id="save-xuat-btn">Lưu Phiếu Xuất</button>
+                        </div>
+                    </div>
+                </form>
+            `;
+    
+            const loaiXuatSelect = document.getElementById('loai-xuat');
+            const nccGroup = document.getElementById('ncc-group');
+            const thuocSearchInput = document.getElementById('thuoc-search-xuat');
+            const thuocSuggestionsDiv = document.getElementById('thuoc-suggestions-xuat');
+            const lotSelect = document.getElementById('lot-select');
+            const soLuongInput = document.getElementById('so-luong-xuat');
+            const addItemBtn = document.getElementById('add-item-xuat-btn');
+            const issueItemsListEl = document.getElementById('issue-items-list');
+    
+            let selectedThuoc = null;
+    
+            loaiXuatSelect.addEventListener('change', () => {
+                nccGroup.classList.toggle('hidden', loaiXuatSelect.value !== 'Xuất trả NCC');
+            });
+    
+            thuocSearchInput.addEventListener('input', () => {
+                const term = thuocSearchInput.value.trim().toLowerCase();
+                if (term.length < 2) {
+                    thuocSuggestionsDiv.style.display = 'none';
+                    return;
+                }
+                const results = danhMucThuoc.filter(t => t.TenThuoc.toLowerCase().includes(term));
+                thuocSuggestionsDiv.innerHTML = results.map(r => `<div class="suggestion-item" data-ma-thuoc="${r.MaThuoc}">${r.TenThuoc}</div>`).join('');
+                thuocSuggestionsDiv.style.display = 'block';
+            });
+    
+            thuocSuggestionsDiv.addEventListener('click', async (e) => {
+                const item = e.target.closest('.suggestion-item');
+                if (!item) return;
+                
+                selectedThuoc = danhMucThuoc.find(t => t.MaThuoc === item.dataset.maThuoc);
+                thuocSearchInput.value = selectedThuoc.TenThuoc;
+                thuocSuggestionsDiv.style.display = 'none';
+                lotSelect.innerHTML = '<option>Đang tải lô...</option>';
+                
+                try {
+                    availableLotsForSelectedDrug = await callAppsScript('getInventoryDetail', { maThuoc: selectedThuoc.MaThuoc });
+                    if (availableLotsForSelectedDrug.length > 0) {
+                        lotSelect.innerHTML = availableLotsForSelectedDrug.map(lot => 
+                            `<option value="${lot.SoLo}" data-hsd="${lot.HanSuDung}" data-max="${lot.SoLuong}">Lô: ${lot.SoLo} | Tồn: ${lot.SoLuong} | HSD: ${new Date(lot.HanSuDung).toLocaleDateString('vi-VN')}</option>`
+                        ).join('');
+                        lotSelect.disabled = false;
+                        soLuongInput.disabled = false;
+                        addItemBtn.disabled = false;
+                        lotSelect.dispatchEvent(new Event('change'));
+                    } else {
+                        lotSelect.innerHTML = '<option>Hết hàng</option>';
+                    }
+                } catch (err) {
+                    showToast(`Lỗi tải chi tiết tồn kho: ${err.message}`, 'error');
+                    lotSelect.innerHTML = '<option>Lỗi tải lô</option>';
+                }
+            });
+    
+            lotSelect.addEventListener('change', () => {
+                const selectedOption = lotSelect.options[lotSelect.selectedIndex];
+                soLuongInput.max = selectedOption.dataset.max || 1;
+                soLuongInput.value = 1;
+            });
+    
+            const renderIssueList = () => {
+                if (issueItems.length === 0) {
+                    issueItemsListEl.innerHTML = '<p>Chưa có hàng hóa.</p>';
+                } else {
+                    issueItemsListEl.innerHTML = `
+                        <table style="font-size: 0.9rem;">
+                            <thead><tr><th>Tên thuốc</th><th>Lô</th><th>SL</th><th></th></tr></thead>
+                            <tbody>
+                                ${issueItems.map((item, index) => `
+                                    <tr>
+                                        <td>${danhMucThuoc.find(t => t.MaThuoc === item.MaThuoc).TenThuoc}</td>
+                                        <td>${item.SoLo}</td>
+                                        <td>${item.SoLuong}</td>
+                                        <td><button type="button" class="btn-remove-issue-item" data-index="${index}" style="background:none;border:none;color:var(--danger-color);cursor:pointer;">&times;</button></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>`;
+                }
+            };
+            
+            issueItemsListEl.addEventListener('click', e => {
+                if (e.target.classList.contains('btn-remove-issue-item')) {
+                    issueItems.splice(parseInt(e.target.dataset.index, 10), 1);
+                    renderIssueList();
+                }
+            });
+
+            addItemBtn.addEventListener('click', () => {
+                const soLuong = parseInt(soLuongInput.value, 10);
+                const maxSoLuong = parseInt(soLuongInput.max, 10);
+                const selectedLotOption = lotSelect.options[lotSelect.selectedIndex];
+
+                if (!selectedThuoc || !selectedLotOption || isNaN(soLuong) || soLuong <= 0) {
+                    showToast('Vui lòng điền đủ thông tin.', 'error'); return;
+                }
+                if (soLuong > maxSoLuong) {
+                    showToast(`Số lượng xuất vượt quá tồn kho của lô (Tồn: ${maxSoLuong}).`, 'error'); return;
+                }
+
+                issueItems.push({
+                    MaThuoc: selectedThuoc.MaThuoc,
+                    SoLo: selectedLotOption.value,
+                    HanSuDung: selectedLotOption.dataset.hsd,
+                    SoLuong: soLuong,
+                });
+                renderIssueList();
+
+                // Reset form
+                thuocSearchInput.value = '';
+                lotSelect.innerHTML = '<option>Vui lòng chọn thuốc</option>';
+                lotSelect.disabled = true;
+                soLuongInput.value = '';
+                soLuongInput.disabled = true;
+                addItemBtn.disabled = true;
+                selectedThuoc = null;
+            });
+
+            document.getElementById('cancel-xuat-btn').addEventListener('click', () => window.location.hash = 'phieuxuatkho');
+
+            document.getElementById('xuat-kho-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                const btn = document.getElementById('save-xuat-btn');
+                if (issueItems.length === 0) {
+                    showToast('Phiếu xuất trống, vui lòng thêm hàng hóa.', 'error');
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = 'Đang lưu...';
+                
+                try {
+                    const phieuXuatData = {
+                        LoaiXuat: loaiXuatSelect.value,
+                        MaNhaCungCap: loaiXuatSelect.value === 'Xuất trả NCC' ? document.getElementById('ncc-select-xuat').value : null,
+                        LyDo: document.getElementById('ly-do').value,
+                        items: issueItems
+                    };
+                    const result = await callAppsScript('addPhieuXuat', phieuXuatData);
+                    showToast(`Đã tạo phiếu xuất ${result.MaPhieuXuat} thành công!`, 'success');
+                    invalidateCache('PhieuXuat');
+                    window.location.hash = 'phieuxuatkho';
+                } catch (err) {
+                    showToast(`Lỗi lưu phiếu xuất: ${err.message}`, 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Lưu Phiếu Xuất';
+                }
+            });
+
+        } catch (error) {
+            mainContent.innerHTML = `<div class="card" style="color:var(--danger-color)">Lỗi tải dữ liệu cần thiết: ${error.message}</div>`;
+        }
+    }
+    
     // The object returned here is merged into the main router
     return {
         tongquan: renderDashboard,
         kho: renderDanhSachThuocKho,
         danhsachphieunhap: renderDanhSachPhieuNhap,
-        xuatrancc: () => renderPlaceholder('Xuất trả nhà cung cấp', 'Chức năng quản lý phiếu xuất trả hàng cho nhà cung cấp.'),
-        xuathuy: () => renderPlaceholder('Xuất hủy', 'Chức năng quản lý phiếu xuất hủy thuốc hết hạn hoặc hư hỏng.'),
+        phieuxuatkho: renderDanhSachPhieuXuat,
         nhapkho: () => renderNhapKhoForm(null),
         'nhapkho-edit': renderNhapKhoEdit,
+        'phieuxuatkho-new': renderPhieuXuatKhoForm,
     };
 }
