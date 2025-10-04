@@ -5,6 +5,70 @@ function initializeBaoCaoModule(app) {
 
     const updatePageTitle = (title) => pageTitle.textContent = title;
     
+    /**
+     * Helper function to make a table sortable.
+     * @param {HTMLElement} tableElement - The <table> element.
+     * @param {Array<Object>} initialData - The array of data objects.
+     * @param {Function} createRowHtml - A function that takes a data item and returns its row HTML string.
+     */
+    const makeTableSortable = (tableElement, initialData, createRowHtml) => {
+        let currentSort = { key: null, order: 'none' };
+        let data = [...initialData];
+        const headers = tableElement.querySelectorAll('thead th[data-sort-key]');
+        const tbody = tableElement.querySelector('tbody');
+
+        const sortData = () => {
+            if (!currentSort.key) return;
+            
+            data.sort((a, b) => {
+                const valA = a[currentSort.key];
+                const valB = b[currentSort.key];
+
+                // Handle dates specifically
+                if (currentSort.key === 'HanSuDung') {
+                    const dateA = valA ? new Date(valA).getTime() : 0;
+                    const dateB = valB ? new Date(valB).getTime() : 0;
+                    return currentSort.order === 'asc' ? dateA - dateB : dateB - dateA;
+                }
+
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return currentSort.order === 'asc' ? valA - valB : valB - valA;
+                }
+                
+                // Default to string comparison
+                return currentSort.order === 'asc' 
+                    ? String(valA).localeCompare(String(valB), 'vi', { numeric: true }) 
+                    : String(valB).localeCompare(String(valA), 'vi', { numeric: true });
+            });
+        };
+
+        const renderTbody = () => {
+            tbody.innerHTML = data.map(createRowHtml).join('');
+        };
+
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                const sortKey = header.dataset.sortKey;
+                
+                if (currentSort.key === sortKey) {
+                    currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort.key = sortKey;
+                    currentSort.order = 'asc';
+                }
+                
+                headers.forEach(h => h.classList.remove('sorted', 'asc', 'desc'));
+                header.classList.add('sorted', currentSort.order);
+                
+                sortData();
+                renderTbody();
+            });
+        });
+
+        // Initial render without sorting
+        renderTbody();
+    };
+
     // --- BÁO CÁO ---
     async function renderBaoCao() {
         updatePageTitle('Báo cáo');
@@ -122,39 +186,70 @@ function initializeBaoCaoModule(app) {
     }
 
     async function renderBaoCaoTonKho(container) {
-        container.innerHTML = '<p>Đang tải báo cáo tồn kho...</p>';
-        try {
-            const data = await callAppsScript('getBaoCaoTonKho');
-            const totalValue = data.reduce((sum, item) => sum + item.estimatedValue, 0);
-
-            container.innerHTML = `
-                <div class="card-header" style="padding: 0 0 15px 0;">
-                    <h3>Báo cáo Tồn kho</h3>
+        container.innerHTML = `
+            <div class="card-header" style="padding: 0 0 15px 0;">
+                <h3>Báo cáo Tồn kho</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="include-zero-stock-checkbox" style="width: 16px; height: 16px;">
+                    <label for="include-zero-stock-checkbox">Kiểm tra cả số lượng = 0</label>
                 </div>
-                <div class="stat-card" style="max-width: 400px; margin-bottom: 20px;">
-                    <div class="icon" style="background-color: var(--primary-color);"><span class="material-symbols-outlined">inventory</span></div>
-                    <div class="info"><h4>${totalValue.toLocaleString('vi-VN')}đ</h4><p>Tổng giá trị tồn kho (ước tính)</p></div>
-                </div>
-                <div class="table-wrapper">
-                    <table>
-                        <thead><tr><th>Mã thuốc</th><th>Tên thuốc</th><th>Tổng tồn</th><th>Đơn vị</th><th>Giá trị ước tính (giá bán)</th></tr></thead>
-                        <tbody>
-                            ${data.map(item => `
+            </div>
+            <div id="tonkho-report-results">
+                <p>Đang tải báo cáo tồn kho...</p>
+            </div>
+        `;
+    
+        const resultsContainer = document.getElementById('tonkho-report-results');
+        const checkbox = document.getElementById('include-zero-stock-checkbox');
+    
+        const fetchAndRender = async () => {
+            const includeZeroStock = checkbox.checked;
+            resultsContainer.innerHTML = '<p>Đang tải dữ liệu...</p>';
+            try {
+                const data = await callAppsScript('getBaoCaoTonKho', { includeZeroStock });
+                const totalValue = data.reduce((sum, item) => sum + item.estimatedValue, 0);
+    
+                resultsContainer.innerHTML = `
+                    <div class="stat-card" style="max-width: 400px; margin-bottom: 20px;">
+                        <div class="icon" style="background-color: var(--primary-color);"><span class="material-symbols-outlined">inventory</span></div>
+                        <div class="info"><h4>${totalValue.toLocaleString('vi-VN')}đ</h4><p>Tổng giá trị tồn kho (ước tính)</p></div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="tonkho-report-table">
+                            <thead>
                                 <tr>
-                                    <td>${item.MaThuoc}</td>
-                                    <td>${item.TenThuoc}</td>
-                                    <td>${item.totalStock}</td>
-                                    <td>${item.DonViCoSo}</td>
-                                    <td>${item.estimatedValue.toLocaleString('vi-VN')}đ</td>
+                                    <th data-sort-key="MaThuoc">Mã thuốc<span class="sort-icon"></span></th>
+                                    <th data-sort-key="TenThuoc">Tên thuốc<span class="sort-icon"></span></th>
+                                    <th data-sort-key="totalStock">Tổng tồn<span class="sort-icon"></span></th>
+                                    <th data-sort-key="DonViCoSo">Đơn vị<span class="sort-icon"></span></th>
+                                    <th data-sort-key="estimatedValue">Giá trị ước tính (giá bán)<span class="sort-icon"></span></th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        } catch (e) {
-            container.innerHTML = `<p style="color:red">Lỗi tải báo cáo: ${e.message}</p>`;
-        }
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                `;
+                
+                const tableEl = document.getElementById('tonkho-report-table');
+                const createRowHtml = item => `
+                    <tr>
+                        <td>${item.MaThuoc}</td>
+                        <td>${item.TenThuoc}</td>
+                        <td>${item.totalStock}</td>
+                        <td>${item.DonViCoSo}</td>
+                        <td>${item.estimatedValue.toLocaleString('vi-VN')}đ</td>
+                    </tr>
+                `;
+    
+                makeTableSortable(tableEl, data, createRowHtml);
+    
+            } catch (e) {
+                resultsContainer.innerHTML = `<p style="color:red">Lỗi tải báo cáo: ${e.message}</p>`;
+            }
+        };
+    
+        checkbox.addEventListener('change', fetchAndRender);
+        await fetchAndRender(); // Initial load
     }
 
     async function renderBaoCaoHanDung(container) {
@@ -188,22 +283,34 @@ function initializeBaoCaoModule(app) {
                 }
                 resultsContainer.innerHTML = `
                     <div class="table-wrapper">
-                        <table>
-                            <thead><tr><th>Tên thuốc</th><th>Số lô</th><th>Hạn sử dụng</th><th>Số lượng tồn</th><th>Đơn vị</th></tr></thead>
-                            <tbody>
-                                ${data.map(item => `
-                                    <tr>
-                                        <td>${item.TenThuoc}</td>
-                                        <td>${item.SoLo}</td>
-                                        <td style="color: var(--danger-color);">${new Date(item.HanSuDung).toLocaleDateString('vi-VN')}</td>
-                                        <td>${item.SoLuong}</td>
-                                        <td>${item.DonViCoSo}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
+                        <table id="handung-report-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort-key="TenThuoc">Tên thuốc<span class="sort-icon"></span></th>
+                                    <th data-sort-key="SoLo">Số lô<span class="sort-icon"></span></th>
+                                    <th data-sort-key="HanSuDung">Hạn sử dụng<span class="sort-icon"></span></th>
+                                    <th data-sort-key="SoLuong">Số lượng tồn<span class="sort-icon"></span></th>
+                                    <th data-sort-key="DonViCoSo">Đơn vị<span class="sort-icon"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
                         </table>
                     </div>
                 `;
+
+                const tableEl = document.getElementById('handung-report-table');
+                const createRowHtml = item => `
+                    <tr>
+                        <td>${item.TenThuoc}</td>
+                        <td>${item.SoLo}</td>
+                        <td style="color: var(--danger-color);">${new Date(item.HanSuDung).toLocaleDateString('vi-VN')}</td>
+                        <td>${item.SoLuong}</td>
+                        <td>${item.DonViCoSo}</td>
+                    </tr>
+                `;
+
+                makeTableSortable(tableEl, data, createRowHtml);
+
             } catch (e) {
                  resultsContainer.innerHTML = `<p style="color:red">Lỗi tải báo cáo: ${e.message}</p>`;
             }
