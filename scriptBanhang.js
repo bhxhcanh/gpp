@@ -305,6 +305,7 @@ function initializeSalesModule(app) {
         let currentAvailableLots = [];
         let totalStockForSelectedDrug = 0;
         let appSettings = appState.cache['appSettings'] || {}; // Use cached settings
+        let blockNextQuantityEnter = false; // Flag to handle barcode scanner Enter key
         
         const handleSaveInvoice = async (shouldPrint, status) => {
             const submitBtn = document.getElementById('submit-invoice-btn');
@@ -607,6 +608,7 @@ function initializeSalesModule(app) {
 
                 const barcodeMatch = donViQuyDoi.find(dv => dv.MaVach && dv.MaVach === term);
                 if(barcodeMatch) {
+                    blockNextQuantityEnter = true; // Set flag for barcode scan
                     selectDrug(barcodeMatch.MaThuoc);
                     drugUnitSelect.value = barcodeMatch.DonViTinh;
                     drugUnitSelect.dispatchEvent(new Event('change'));
@@ -785,6 +787,10 @@ function initializeSalesModule(app) {
             drugQuantityInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
+                    if (blockNextQuantityEnter) {
+                        blockNextQuantityEnter = false; // Consume the block and do nothing
+                        return;
+                    }
                     drugPriceInput.focus();
                     drugPriceInput.select();
                 }
@@ -831,39 +837,40 @@ function initializeSalesModule(app) {
     async function renderInvoices() {
         updatePageTitle('Hóa đơn');
     
-        // Use a persistent state object from the global app cache
-        if (!appState.cache.invoicesPage) {
-            appState.cache.invoicesPage = {
-                invoices: [],
+        if (!appState.cache.invoicesPageState) {
+            appState.cache.invoicesPageState = {
                 currentPage: 1,
                 itemsPerPage: 12,
-                totalRecords: 0,
-                totalPages: 1,
-                isLoading: false,
-                initialLoadSize: 60,
-                isDataLoaded: false // Flag to track if we have data
             };
         }
-        const state = appState.cache.invoicesPage;
+        const state = appState.cache.invoicesPageState;
     
         const render = () => {
-            const { currentPage, itemsPerPage, invoices, totalRecords, totalPages } = state;
+            const allInvoices = (appState.cache.HoaDon || []).sort((a, b) => new Date(b.NgayBan) - new Date(a.NgayBan));
+            const allUsers = appState.cache.allUsers || [];
+            const nhanSuMap = new Map(allUsers.map(user => [user.MaNhanVien, user.HoTen]));
+    
+            state.totalRecords = allInvoices.length;
+            state.totalPages = Math.ceil(state.totalRecords / state.itemsPerPage) || 1;
+            if (state.currentPage > state.totalPages) {
+                state.currentPage = state.totalPages;
+            }
+    
+            const { currentPage, itemsPerPage, totalRecords, totalPages } = state;
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
-            const pageData = invoices.slice(startIndex, endIndex);
+            const pageData = allInvoices.slice(startIndex, endIndex);
     
-            const nhanSuMap = appState.cache.nhanSuMap || {};
             const userRole = appState.currentUser?.Quyen;
-            
-            const tableRows = pageData.map(inv => {
-                const canDelete = userRole === 'Quản trị' || userRole === 'Admin';
-                return `
+            const canDelete = userRole === 'Quản trị' || userRole === 'Admin';
+    
+            const tableRows = pageData.map(inv => `
                 <tr data-ma-hd="${inv.MaHoaDon}">
                     <td>${inv.MaHoaDon}</td>
                     <td>${inv.MaKhachHang}</td>
-                    <td>${inv.ThanhTien.toLocaleString('vi-VN')}đ</td>
+                    <td>${(inv.ThanhTien || 0).toLocaleString('vi-VN')}đ</td>
                     <td>${new Date(inv.NgayBan).toLocaleString('vi-VN')}</td>
-                    <td>${nhanSuMap[inv.NguoiBan] || inv.NguoiBan}</td>
+                    <td>${nhanSuMap.get(inv.NguoiBan) || inv.NguoiBan}</td>
                     <td>${inv.TrangThaiThanhToan || 'N/A'}</td>
                     <td class="action-cell">
                         <div class="action-menu">
@@ -876,14 +883,14 @@ function initializeSalesModule(app) {
                         </div>
                     </td>
                 </tr>
-            `}).join('');
+            `).join('');
     
             mainContent.innerHTML = `
                 <div class="card">
                     <div class="card-header">
                         <h3>Danh sách hóa đơn</h3>
                         <div style="display: flex; gap: 10px;">
-                            <input type="search" placeholder="Tìm kiếm hóa đơn..." disabled>
+                            <input type="search" id="invoice-search" placeholder="Tìm kiếm hóa đơn..." disabled>
                             <button id="refresh-invoices-btn" class="btn btn-secondary"><span class="material-symbols-outlined">refresh</span></button>
                         </div>
                     </div>
@@ -903,7 +910,7 @@ function initializeSalesModule(app) {
                             </select>
                         </div>
                         <div class="page-info">
-                            <span>Hiển thị ${startIndex + 1}-${Math.min(endIndex, totalRecords)} của ${totalRecords}</span>
+                            <span>Hiển thị ${totalRecords > 0 ? startIndex + 1 : 0}-${Math.min(endIndex, totalRecords)} của ${totalRecords}</span>
                         </div>
                         <div class="page-nav">
                              <button class="btn btn-secondary" id="prev-page" ${currentPage === 1 ? 'disabled' : ''}>Trước</button>
@@ -913,68 +920,47 @@ function initializeSalesModule(app) {
                     </div>
                 </div>
             `;
-            
+    
+            const changePage = (newPage) => {
+                if (newPage < 1 || newPage > state.totalPages) return;
+                state.currentPage = newPage;
+                render();
+            };
+    
             document.getElementById('hoa-don-tbody').addEventListener('click', e => {
                 const actionItem = e.target.closest('.action-item');
                 if (actionItem) {
                     e.preventDefault();
                     const action = actionItem.dataset.action;
                     const maHD = actionItem.closest('tr').dataset.maHd;
-                    handleHoaDonAction(action, maHD, () => fetchData(true));
+                    handleHoaDonAction(action, maHD, render);
                 }
             });
     
-            document.getElementById('refresh-invoices-btn').addEventListener('click', () => fetchData(true));
+            document.getElementById('refresh-invoices-btn').addEventListener('click', async () => {
+                showToast('Đang làm mới danh sách hóa đơn...', 'info');
+                await getCachedDanhMuc('HoaDon', true);
+                state.currentPage = 1;
+                render();
+                showToast('Làm mới thành công!', 'success');
+            });
             document.getElementById('prev-page').addEventListener('click', () => changePage(state.currentPage - 1));
             document.getElementById('next-page').addEventListener('click', () => changePage(state.currentPage + 1));
             document.getElementById('items-per-page-select').addEventListener('change', (e) => {
                 state.itemsPerPage = parseInt(e.target.value, 10);
                 state.currentPage = 1;
-                state.totalPages = Math.ceil(state.totalRecords / state.itemsPerPage);
                 render();
             });
         };
     
-        const fetchData = async (forceRefresh = false, page = 1, size = state.initialLoadSize) => {
-            if (state.isLoading) return;
-            state.isLoading = true;
-            if (forceRefresh) {
-                state.invoices = [];
-                state.currentPage = 1;
-                state.isDataLoaded = false;
-                mainContent.innerHTML = `<div class="card"><p>Đang tải danh sách hóa đơn...</p></div>`;
-            }
-            showToast('Đang tải dữ liệu hóa đơn...', 'info');
-            try {
-                const data = await callAppsScript('getHoaDonListPaginated', { page: page, pageSize: size });
-                state.invoices = forceRefresh ? data.invoices : [...state.invoices, ...data.invoices];
-                state.totalRecords = data.totalRecords;
-                state.totalPages = Math.ceil(state.totalRecords / state.itemsPerPage);
-                state.isDataLoaded = true;
-                render();
-            } catch (error) {
-                 mainContent.innerHTML = `<div class="card" style="color: var(--danger-color);"><p><strong>Lỗi tải dữ liệu hóa đơn:</strong> ${error.message}</p></div>`;
-            } finally {
-                state.isLoading = false;
-            }
-        };
-        
-        const changePage = async (newPage) => {
-            if (newPage < 1 || newPage > state.totalPages || state.isLoading) return;
-            state.currentPage = newPage;
-            const requiredItems = state.currentPage * state.itemsPerPage;
-            if (requiredItems > state.invoices.length && state.invoices.length < state.totalRecords) {
-                await fetchData(false, Math.ceil(state.invoices.length / state.initialLoadSize) + 1, state.initialLoadSize);
-            } else {
-                render();
-            }
-        };
+        mainContent.innerHTML = `<div class="card"><p>Đang tải danh sách hóa đơn...</p></div>`;
     
-        // Main entry logic for the function
-        if (state.isDataLoaded) {
+        if (appState.cache.HoaDon) {
             render();
         } else {
-            fetchData(true);
+            showToast('Đang tải dữ liệu hóa đơn lần đầu...', 'info');
+            await getCachedDanhMuc('HoaDon', true);
+            render();
         }
     }
 
