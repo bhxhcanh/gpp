@@ -509,6 +509,52 @@ tbody tr:hover {
     background-color: #f1f3f5;
 }
 
+/* Sortable Table Headers */
+th[data-sort-key] {
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    padding-right: 30px !important;
+}
+
+th[data-sort-key]:hover {
+    background-color: #e9ecef;
+}
+
+.sort-icon {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 400;
+    font-size: 16px;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--secondary-color);
+    opacity: 0.5;
+    transition: opacity 0.2s, color 0.2s;
+}
+
+th[data-sort-key]:hover .sort-icon {
+    opacity: 1;
+}
+
+th[data-sort-key].sorted .sort-icon {
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+th[data-sort-key] .sort-icon::before {
+    content: 'unfold_more';
+}
+
+th[data-sort-key].sorted.asc .sort-icon::before {
+    content: 'arrow_upward';
+}
+
+th[data-sort-key].sorted.desc .sort-icon::before {
+    content: 'arrow_downward';
+}
+
 
 /* Modal */
 .modal-container {
