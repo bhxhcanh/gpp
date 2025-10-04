@@ -251,6 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 getCachedDanhMuc('DanhMucNhaSanXuat'),
                 getCachedDanhMuc('DMDonViTinh'),
                 getCachedDanhMuc('DMNhomHangHoa'),
+                getCachedDanhMuc('PhieuNhap'), // Tải phiếu nhập khi đăng nhập
+                getCachedDanhMuc('HoaDon'), // Tải hóa đơn khi đăng nhập
+                getCachedDanhMuc('PhieuXuat'), // Tải phiếu xuất khi đăng nhập
                 callAppsScript('getInventorySummary').then(summary => {
                     appState.cache['inventorySummary'] = summary;
                 }),
@@ -348,10 +351,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyRBAC = () => {
         const userRole = appState.currentUser?.Quyen || '';
         const navVisibility = {
-            'Admin': ['tongquan', 'banhang', 'hoadon', 'kho', 'danhsachphieunhap', 'xuatrancc', 'xuathuy', 'soquy', 'baocao', 'danhmuc', 'quantri'],
-            'Quản trị': ['tongquan', 'banhang', 'hoadon', 'kho', 'danhsachphieunhap', 'xuatrancc', 'xuathuy', 'soquy', 'baocao', 'danhmuc', 'quantri'],
+            'Admin': ['tongquan', 'banhang', 'hoadon', 'kho', 'danhsachphieunhap', 'phieuxuatkho', 'soquy', 'baocao', 'danhmuc', 'quantri'],
+            'Quản trị': ['tongquan', 'banhang', 'hoadon', 'kho', 'danhsachphieunhap', 'phieuxuatkho', 'soquy', 'baocao', 'danhmuc', 'quantri'],
             'Bán hàng': ['tongquan', 'banhang', 'hoadon', 'soquy', 'baocao', 'danhmuc'],
-            'Kho': ['tongquan', 'hoadon', 'kho', 'danhsachphieunhap', 'xuatrancc', 'xuathuy', 'soquy', 'baocao', 'danhmuc'],
+            'Kho': ['tongquan', 'hoadon', 'kho', 'danhsachphieunhap', 'phieuxuatkho', 'soquy', 'baocao', 'danhmuc'],
         };
         const allowedPages = navVisibility[userRole] || [];
         document.querySelectorAll('.sidebar-nav [data-page]').forEach(link => {
@@ -369,10 +372,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasPermission = (pageId) => {
         const userRole = appState.currentUser?.Quyen || '';
         const navVisibility = {
-            'Admin': ['tongquan', 'banhang', 'hoadon', 'kho', 'danhsachphieunhap', 'xuatrancc', 'xuathuy', 'soquy', 'baocao', 'danhmuc', 'quantri', 'nhapkho', 'nhapkho-edit'],
-            'Quản trị': ['tongquan', 'banhang', 'hoadon', 'kho', 'danhsachphieunhap', 'xuatrancc', 'xuathuy', 'soquy', 'baocao', 'danhmuc', 'quantri', 'nhapkho', 'nhapkho-edit'],
+            'Admin': ['tongquan', 'banhang', 'hoadon', 'kho', 'danhsachphieunhap', 'phieuxuatkho', 'phieuxuatkho-new', 'soquy', 'baocao', 'danhmuc', 'quantri', 'nhapkho', 'nhapkho-edit'],
+            'Quản trị': ['tongquan', 'banhang', 'hoadon', 'kho', 'danhsachphieunhap', 'phieuxuatkho', 'phieuxuatkho-new', 'soquy', 'baocao', 'danhmuc', 'quantri', 'nhapkho', 'nhapkho-edit'],
             'Bán hàng': ['tongquan', 'banhang', 'hoadon', 'soquy', 'baocao', 'danhmuc'],
-            'Kho': ['tongquan', 'hoadon', 'kho', 'danhsachphieunhap', 'xuatrancc', 'xuathuy', 'soquy', 'baocao', 'danhmuc', 'nhapkho', 'nhapkho-edit'],
+            'Kho': ['tongquan', 'hoadon', 'kho', 'danhsachphieunhap', 'phieuxuatkho', 'phieuxuatkho-new', 'soquy', 'baocao', 'danhmuc', 'nhapkho', 'nhapkho-edit'],
         };
         const allowedPages = navVisibility[userRole] || [];
         return allowedPages.includes(pageId);
@@ -497,8 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = `<p>Đang tải danh sách người dùng...</p>`;
         // Fetch users from the central auth script
         callAuthScript('getUsersForAdmin', { username_chinh: appState.currentUser.username_chinh })
-            .then(users => {
-                appState.cache['allUsers'] = users; // Update cache
+            .then(allUsers => {
+                appState.cache['allUsers'] = allUsers; // Update cache with the full list
+                const usersToDisplay = allUsers.filter(u => u.Quyen !== 'Admin'); // Filter out Admins for display
+
                 container.innerHTML = `
                     <div class="card-header">
                         <h3>Quản lý người dùng</h3>
@@ -508,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <table>
                             <thead><tr><th>Mã NV</th><th>Họ Tên</th><th>Tên đăng nhập</th><th>Chức vụ</th><th>Quyền</th><th class="action-cell">Hành động</th></tr></thead>
                             <tbody id="users-tbody">
-                                ${users.map(u => `
+                                ${usersToDisplay.map(u => `
                                     <tr data-id="${u.MaNhanVien}" data-username="${u.TenDangNhap}">
                                         <td>${u.MaNhanVien}</td><td>${u.HoTen}</td><td>${u.TenDangNhap}</td>
                                         <td>${u.ChucVu}</td><td>${u.Quyen}</td>
@@ -689,11 +694,81 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     };
 
+    const renderQuantriPrintConfig = (container) => {
+        container.innerHTML = `<p>Đang tải cài đặt in tem...</p>`;
+        callAppsScript('getAppSettings')
+            .then(settings => {
+                container.innerHTML = `
+                    <div class="card-header"><h3>Cấu hình In tem nhãn</h3></div>
+                    <div class="card-body">
+                        <form id="print-settings-form">
+                            <p>Các cài đặt này sẽ được áp dụng làm mặc định khi bạn mở chức năng "In tem nhãn" trong "Phiếu nhập kho".</p>
+                            <h4 style="margin-top: 20px; margin-bottom: 15px;">Bố cục trang in</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <div class="input-group"><label for="print-page-width">Rộng trang (mm)</label><input type="number" id="print-page-width" value="${settings.print_pageWidth || '110'}"></div>
+                                <div class="input-group"><label for="print-page-height">Cao trang (mm hoặc 'auto')</label><input type="text" id="print-page-height" value="${settings.print_pageHeight || 'auto'}"></div>
+                                <div class="input-group"><label for="print-margin-top">Lề trên (mm)</label><input type="number" id="print-margin-top" value="${settings.print_marginTop || '2'}"></div>
+                                <div class="input-group"><label for="print-margin-bottom">Lề dưới (mm)</label><input type="number" id="print-margin-bottom" value="${settings.print_marginBottom || '1'}"></div>
+                                <div class="input-group"><label for="print-margin-left">Lề trái (mm)</label><input type="number" id="print-margin-left" value="${settings.print_marginLeft || '3'}"></div>
+                                <div class="input-group"><label for="print-margin-right">Lề phải (mm)</label><input type="number" id="print-margin-right" value="${settings.print_marginRight || '2'}"></div>
+                                <div class="input-group"><label for="print-gap">Khoảng cách tem (mm)</label><input type="number" id="print-gap" value="${settings.print_gap || '3'}"></div>
+                            </div>
+                            
+                            <h4 style="margin-top: 20px; margin-bottom: 15px;">Kích thước tem</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <div class="input-group"><label for="print-label-width">Rộng tem (mm)</label><input type="number" id="print-label-width" value="${settings.print_labelWidth || '32'}"></div>
+                                <div class="input-group"><label for="print-label-height">Cao tem (mm)</label><input type="number" id="print-label-height" value="${settings.print_labelHeight || '16'}"></div>
+                            </div>
+
+                            <div style="text-align: right; margin-top: 20px;"><button type="submit" class="btn btn-primary">Lưu thay đổi</button></div>
+                        </form>
+                    </div>
+                `;
+                document.getElementById('print-settings-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const submitBtn = e.target.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Đang lưu...';
+                    
+                    const newPrintSettings = {
+                        print_pageWidth: document.getElementById('print-page-width').value,
+                        print_pageHeight: document.getElementById('print-page-height').value,
+                        print_marginTop: document.getElementById('print-margin-top').value,
+                        print_marginBottom: document.getElementById('print-margin-bottom').value,
+                        print_marginLeft: document.getElementById('print-margin-left').value,
+                        print_marginRight: document.getElementById('print-margin-right').value,
+                        print_gap: document.getElementById('print-gap').value,
+                        print_labelWidth: document.getElementById('print-label-width').value,
+                        print_labelHeight: document.getElementById('print-label-height').value,
+                    };
+
+                    try {
+                        await callAppsScript('updateAppSettings', { settings: newPrintSettings });
+                        // Update local cache
+                        appState.cache['appSettings'] = { ...appState.cache['appSettings'], ...newPrintSettings };
+                        showToast('Cập nhật cài đặt in tem thành công!', 'success');
+                    } catch (error) {
+                        showToast(`Lỗi: ${error.message}`, 'error');
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Lưu thay đổi';
+                    }
+                });
+            })
+            .catch(error => {
+                container.innerHTML = `<div style="color: var(--danger-color);"><p><strong>Lỗi tải cài đặt in tem:</strong> ${error.message}</p></div>`;
+            });
+    };
+
     function renderQuantri() {
         updatePageTitle('Quản trị');
         mainContent.innerHTML = `
             <div class="card">
-                <div class="tabs" id="quantri-tabs"><button class="tab-link active" data-tab="users">Quản lý người dùng</button><button class="tab-link" data-tab="settings">Cài đặt chung</button></div>
+                <div class="tabs" id="quantri-tabs">
+                    <button class="tab-link active" data-tab="users">Quản lý người dùng</button>
+                    <button class="tab-link" data-tab="settings">Cài đặt chung</button>
+                    <button class="tab-link" data-tab="print-config">Cấu hình tem in</button>
+                </div>
                 <div id="quantri-content"></div>
             </div>`;
         const tabContainer = document.getElementById('quantri-content');
@@ -701,6 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const renderTabContent = (tabId) => {
             if (tabId === 'users') renderQuantriUsers(tabContainer);
             else if (tabId === 'settings') renderQuantriSettings(tabContainer);
+            else if (tabId === 'print-config') renderQuantriPrintConfig(tabContainer);
         };
         tabs.forEach(tab => {
             tab.addEventListener('click', (e) => {
@@ -759,7 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.hash = 'tongquan';
             return;
         }
-        const pageToHighlight = pageId.startsWith('nhapkho') ? 'danhsachphieunhap' : pageId;
+        const pageToHighlight = pageId.startsWith('nhapkho') ? 'danhsachphieunhap' : (pageId.startsWith('phieuxuatkho') ? 'phieuxuatkho' : pageId);
         navLinks.forEach(link => {
             link.classList.remove('active');
             const parentGroup = link.closest('.nav-item-group');
