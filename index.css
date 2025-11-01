@@ -105,31 +105,79 @@ body {
 }
 
 
-/* Login Page */
-#login-page {
+/* New Login Page Styles */
+.login-page-container {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
 }
 
-.login-box {
-    width: 100%;
-    max-width: 450px;
-    padding: 40px;
+.login-form-wrapper {
     background-color: var(--card-bg);
+    padding: 40px;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 420px;
     text-align: center;
 }
 
-.login-box h1 {
+.login-form-wrapper h1 {
+    font-size: 2rem;
+    font-weight: 700;
     margin-bottom: 10px;
     color: var(--dark-color);
 }
 
-.login-box p {
+.login-form-wrapper p {
+    margin-bottom: 30px;
+    color: var(--secondary-color);
+}
+
+.login-form-wrapper .input-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.login-form-wrapper .btn {
+    padding: 12px 20px;
+    font-size: 1rem;
+    margin-top: 10px;
+}
+
+.login-form-wrapper .register-link {
+    margin-top: 25px;
+    font-size: 0.9rem;
+}
+
+.login-form-wrapper .register-link a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.login-form-wrapper .register-link a:hover {
+    text-decoration: underline;
+}
+
+/* Auth Forms in Modal */
+.auth-form-container {
+    width: 100%;
+    max-width: 450px;
+    margin: 0 auto;
+    padding: 10px;
+    text-align: center;
+}
+
+.auth-form-container h1 {
+    margin-bottom: 10px;
+    color: var(--dark-color);
+}
+
+.auth-form-container p {
     margin-bottom: 30px;
     color: var(--secondary-color);
 }
@@ -141,8 +189,9 @@ body {
 
 .input-group label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: 500;
+    font-size: 0.9rem;
 }
 
 .input-group input, .input-group select {
@@ -151,18 +200,6 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 1rem;
-}
-
-.toggle-link {
-    display: block;
-    margin-top: 25px;
-    color: var(--primary-color);
-    text-decoration: none;
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-.toggle-link:hover {
-    text-decoration: underline;
 }
 
 /* App Layout */
