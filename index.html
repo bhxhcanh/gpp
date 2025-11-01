@@ -23,67 +23,28 @@
         </div>
     </div>
 
-    <div id="login-page">
-        <!-- Login Container -->
-        <div id="login-container" class="login-box">
+    <div id="login-page" class="login-page-container">
+        <div class="login-form-wrapper">
             <h1>Đăng nhập</h1>
             <p>Chào mừng trở lại!</p>
             <form id="login-form">
                 <div class="input-group">
                     <label for="username">Tên đăng nhập</label>
-                    <input type="text" id="username" name="username" required>
+                    <input type="text" id="username" name="username" required autocomplete="username">
                 </div>
                 <div class="input-group">
                     <label for="password">Mật khẩu</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Đăng nhập</button>
+                <p id="login-error" class="hidden" style="color: var(--danger-color); margin-top: 15px;"></p>
+                <div class="login-links" style="display: flex; justify-content: space-between; margin-top: 25px; font-size: 0.9rem;">
+                    <a href="#" id="show-forgot-password-link" style="color: var(--secondary-color); text-decoration: none;">Quên mật khẩu?</a>
+                    <span style="color: var(--secondary-color);">Chưa có tài khoản? <a href="#" id="show-register-link">Đăng ký ngay</a></span>
+                </div>
             </form>
-            <p id="login-error" class="hidden" style="color: var(--danger-color); margin-top: 15px;"></p>
-            <a id="show-register" class="toggle-link">Chưa có tài khoản? Đăng ký ngay</a>
-        </div>
-
-        <!-- Register Container -->
-        <div id="register-container" class="login-box hidden">
-            <h1>Đăng ký nhà thuốc</h1>
-            <p>Bắt đầu quản lý hiệu quả ngay hôm nay.</p>
-            <form id="register-form">
-                <div class="input-group">
-                    <label for="reg-tennhathuoc">Tên nhà thuốc</label>
-                    <input type="text" id="reg-tennhathuoc" required>
-                </div>
-                 <div class="input-group">
-                    <label for="reg-username">Tên đăng nhập chính (quản trị)</label>
-                    <input type="text" id="reg-username" required>
-                </div>
-                <div class="input-group">
-                    <label for="reg-password">Mật khẩu</label>
-                    <input type="password" id="reg-password" required minlength="4">
-                </div>
-                 <div class="input-group">
-                    <label for="reg-confirm-password">Xác nhận mật khẩu</label>
-                    <input type="password" id="reg-confirm-password" required minlength="4">
-                </div>
-                 <div class="input-group">
-                    <label for="reg-hoten">Họ tên chủ nhà thuốc</label>
-                    <input type="text" id="reg-hoten" required>
-                </div>
-                 <div class="input-group">
-                    <label for="reg-email">Email liên hệ</label>
-                    <input type="email" id="reg-email" required>
-                </div>
-                <div class="input-group">
-                    <label for="reg-sdt">Số điện thoại</label>
-                    <input type="tel" id="reg-sdt" required>
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Đăng ký</button>
-            </form>
-            <p id="register-message" class="hidden" style="margin-top: 15px;"></p>
-            <a id="show-login" class="toggle-link">Đã có tài khoản? Đăng nhập</a>
         </div>
     </div>
-
 
     <div id="app-container" class="hidden">
         <aside class="sidebar">
