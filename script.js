@@ -318,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const showApp = async () => {
-        loginPage.classList.add('hidden');
+        if (loginPage) loginPage.classList.add('hidden');
         appContainer.classList.remove('hidden');
         const loadingIndicator = document.getElementById('loading-indicator');
         loadingIndicator.classList.add('hidden');
