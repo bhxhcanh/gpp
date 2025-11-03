@@ -3,6 +3,11 @@ function initializeDanhmucModule(app) {
     const mainContent = document.getElementById('main-content');
     const pageTitle = document.getElementById('page-title');
 
+    const removeDiacritics = (str) => {
+        if (!str) return '';
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+    };
+
     // --- DYNAMIC "QUICK ADD" HELPERS ---
     const showAddSupplierModal = (selectElementToUpdate, onComplete) => {
         const modalContent = `
@@ -831,27 +836,62 @@ function initializeDanhmucModule(app) {
                          <button class="btn btn-primary" id="btn-add-item">Thêm mới</button>
                     </div>
                 </div>
-                <div class="card-body table-wrapper">
-                    <table>
-                        <thead><tr><th>Mã thuốc</th><th>Tên thuốc</th><th>Hoạt chất</th><th>ĐV cơ sở</th><th>Nhà sản xuất</th><th class="action-cell">Hành động</th></tr></thead>
-                        <tbody id="dm-tbody">
-                        ${thuocList.map(item => `
-                            <tr data-id="${item.MaThuoc}">
-                                <td>${item.MaThuoc}</td><td>${item.TenThuoc}</td><td>${item.HoatChat || ''}</td><td>${item.DonViCoSo}</td><td>${nsxMap.get(item.MaNhaSanXuat) || ''}</td>
-                                <td class="action-cell">
-                                    <div class="action-menu"><button class="btn-actions"><span class="material-symbols-outlined">more_vert</span></button>
-                                        <div class="action-menu-dropdown">
-                                            <a href="#" class="action-item" data-action="copy">Sao chép</a>
-                                            <a href="#" class="action-item" data-action="edit">Sửa</a>
-                                            <a href="#" class="action-item" data-action="delete">Xóa</a>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>`).join('')}
-                        </tbody>
-                    </table>
+                <div class="card-body">
+                    <div class="input-group" style="max-width: 400px; margin-bottom: 20px;">
+                        <input type="text" id="thuoc-filter-input" placeholder="Tìm kiếm nhanh theo tên thuốc, hoạt chất, SĐK...">
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Mã thuốc</th><th>Tên thuốc</th><th>Hoạt chất</th><th>ĐV cơ sở</th><th>Nhà sản xuất</th><th class="action-cell">Hành động</th></tr></thead>
+                            <tbody id="dm-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             `;
+            
+            const tableBody = document.getElementById('dm-tbody');
+            const filterInput = document.getElementById('thuoc-filter-input');
+    
+            const renderTableRows = (data) => {
+                tableBody.innerHTML = data.map(item => `
+                    <tr data-id="${item.MaThuoc}">
+                        <td>${item.MaThuoc}</td><td>${item.TenThuoc}</td><td>${item.HoatChat || ''}</td><td>${item.DonViCoSo}</td><td>${nsxMap.get(item.MaNhaSanXuat) || ''}</td>
+                        <td class="action-cell">
+                            <div class="action-menu"><button class="btn-actions"><span class="material-symbols-outlined">more_vert</span></button>
+                                <div class="action-menu-dropdown">
+                                    <a href="#" class="action-item" data-action="copy">Sao chép</a>
+                                    <a href="#" class="action-item" data-action="edit">Sửa</a>
+                                    <a href="#" class="action-item" data-action="delete">Xóa</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>`).join('');
+            };
+    
+            renderTableRows(thuocList); // Initial render
+    
+            filterInput.addEventListener('input', () => {
+                const searchTerm = filterInput.value.trim().toLowerCase();
+                const normalizedSearchTerm = removeDiacritics(searchTerm);
+    
+                if (!searchTerm) {
+                    renderTableRows(thuocList);
+                    return;
+                }
+    
+                const filteredData = thuocList.filter(item => {
+                    const tenThuoc = removeDiacritics(item.TenThuoc.toLowerCase());
+                    const hoatChat = item.HoatChat ? removeDiacritics(item.HoatChat.toLowerCase()) : '';
+                    const soDangKy = item.SoDangKy ? item.SoDangKy.toLowerCase() : '';
+                    
+                    return tenThuoc.includes(normalizedSearchTerm) ||
+                           hoatChat.includes(normalizedSearchTerm) ||
+                           soDangKy.includes(searchTerm);
+                });
+                renderTableRows(filteredData);
+            });
+
+
             document.getElementById('btn-add-item').addEventListener('click', () => showAddThuocModal());
             document.getElementById('btn-import-thuoc').addEventListener('click', () => showImportThuocModal());
 
