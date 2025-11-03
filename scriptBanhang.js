@@ -189,7 +189,7 @@ function initializeSalesModule(app) {
                     qrCodeHtml = `
                         <div class="qr-container">
                             <p>Quét mã để thanh toán</p>
-                            <img src="${qrDataURL}" alt="VietQR Code" style="width: 50mm; height: 50mm;"/>
+                            <img src="${qrDataURL}" alt="VietQR Code" style="width: 25mm; height: 25mm;"/>
                             <div class="bank-info">
                                 <p><strong>Ngân hàng:</strong> ${TenNganHang || 'N/A'}</p>
                                 <p><strong>Số tài khoản:</strong> ${SoTaiKhoan}</p>
@@ -227,7 +227,7 @@ function initializeSalesModule(app) {
                                 table { width: 100%; border-collapse: collapse; margin-top: 5px; }
                                 th { text-align: left; border-bottom: 1px solid black; }
                                 td { padding: 2px 0; }
-                                .item-row td { vertical-align: top; font-size: 8pt; }
+                                .item-row td { vertical-align: top; font-size: 10pt; }
                                 .item-row .price-col { text-align: right; }
                                 .summary { margin-top: 5px; border-top: 1px dashed black; padding-top: 5px; }
                                 .summary p { display: flex; justify-content: space-between; }
