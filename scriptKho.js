@@ -1,4 +1,3 @@
-
 function initializePharmacyModule(app) {
     const { callAppsScript, getCachedDanhMuc, showToast, showModal, hideModal, invalidateCache, generateOptions, state: appState } = app;
     const mainContent = document.getElementById('main-content');
@@ -518,17 +517,7 @@ function initializePharmacyModule(app) {
                 window.location.hash = `nhapkho-edit?id=${maPhieuNhap}`;
                 break;
             case 'delete':
-                if (confirm(`Bạn có chắc chắn muốn xóa phiếu nhập ${maPhieuNhap}? Thao tác này sẽ hoàn trả (trừ) tồn kho tương ứng và không thể hoàn tác.`)) {
-                    showToast(`Đang xóa phiếu nhập ${maPhieuNhap}...`, 'info');
-                    try {
-                        const result = await callAppsScript('deletePhieuNhap', { maPhieuNhap: maPhieuNhap });
-                        showToast(result.message, 'success');
-                        invalidateCache('PhieuNhap');
-                        renderDanhSachPhieuNhap(); // Reload list
-                    } catch (e) {
-                        showToast(`Lỗi khi xóa: ${e.message}`, 'error');
-                    }
-                }
+                showToast('Chức năng "Xóa phiếu" đang được phát triển.', 'info');
                 break;
         }
     };
