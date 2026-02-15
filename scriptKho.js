@@ -961,40 +961,41 @@ function initializePharmacyModule(app) {
             });
             
             const handleThuocSearch = async () => {
-                 const term = thuocSearchInput.value.trim();
-                 thuocSuggestionsDiv.innerHTML = '';
-                 
-                 if (term.length < 2 && !donViQuyDoi.some(dv => dv.MaVach && dv.MaVach === term)) {
+                const term = thuocSearchInput.value.trim();
+                thuocSuggestionsDiv.innerHTML = '';
+            
+                // Check for barcode match first, as they can be short
+                const barcodeMatch = donViQuyDoi.find(dv => dv.MaVach && dv.MaVach === term);
+                if (barcodeMatch) {
+                    blockNextSoLoEnter = true;
+                    await selectThuoc(barcodeMatch.MaThuoc);
+                    return;
+                }
+            
+                // For text search, require at least 1 character
+                if (term.length < 1) { 
                     thuocSuggestionsDiv.style.display = 'none';
                     return;
-                 }
-                 
-                 const barcodeMatch = donViQuyDoi.find(dv => dv.MaVach && dv.MaVach === term);
-                 if (barcodeMatch) {
-                     blockNextSoLoEnter = true;
-                     await selectThuoc(barcodeMatch.MaThuoc);
-                     return;
-                 }
-
-                 const normalizedTerm = removeDiacritics(term.toLowerCase());
-                 const results = danhMucThuoc.filter(thuoc => 
-                    removeDiacritics(thuoc.TenThuoc.toLowerCase()).includes(normalizedTerm) ||
-                    (thuoc.HoatChat && removeDiacritics(thuoc.HoatChat.toLowerCase()).includes(normalizedTerm)) ||
-                    (thuoc.SoDangKy && thuoc.SoDangKy.toLowerCase().includes(term))
-                 );
-
-                 if (results.length > 0) {
-                     thuocSuggestionsDiv.innerHTML = results.slice(0, 10).map((r, index) => 
-                        `<div class="suggestion-item ${index === 0 ? 'selected' : ''}" data-ma-thuoc="${r.MaThuoc}">
-                            <strong>${r.TenThuoc}</strong><br>
-                            <small>SDK: ${r.SoDangKy || 'N/A'}</small>
-                        </div>`
-                     ).join('');
-                     thuocSuggestionsDiv.style.display = 'block';
-                 } else {
-                     thuocSuggestionsDiv.innerHTML = `<div class="suggestion-item add-new" data-action="add-new-thuoc">Không tìm thấy? Thêm thuốc mới...</div>`;
-                     thuocSuggestionsDiv.style.display = 'block';
-                 }
+                }
+            
+                const normalizedTerm = removeDiacritics(term.toLowerCase());
+                const results = danhMucThuoc.filter(thuoc => 
+                   removeDiacritics(thuoc.TenThuoc.toLowerCase()).includes(normalizedTerm) ||
+                   (thuoc.HoatChat && removeDiacritics(thuoc.HoatChat.toLowerCase()).includes(normalizedTerm)) ||
+                   (thuoc.SoDangKy && thuoc.SoDangKy.toLowerCase().includes(term.toLowerCase()))
+                );
+            
+                if (results.length > 0) {
+                    thuocSuggestionsDiv.innerHTML = results.slice(0, 10).map((r, index) => 
+                       `<div class="suggestion-item ${index === 0 ? 'selected' : ''}" data-ma-thuoc="${r.MaThuoc}">
+                           <strong>${r.TenThuoc}</strong><br>
+                           <small>SDK: ${r.SoDangKy || 'N/A'}</small>
+                       </div>`
+                    ).join('');
+                } else {
+                    thuocSuggestionsDiv.innerHTML = `<div class="suggestion-item add-new" data-action="add-new-thuoc">Không tìm thấy? Thêm thuốc mới...</div>`;
+                }
+                thuocSuggestionsDiv.style.display = 'block';
             };
             
             const selectThuoc = async (maThuoc) => {
