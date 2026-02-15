@@ -964,7 +964,6 @@ function initializePharmacyModule(app) {
                 const term = thuocSearchInput.value.trim();
                 thuocSuggestionsDiv.innerHTML = '';
             
-                // Check for barcode match first, as they can be short
                 const barcodeMatch = donViQuyDoi.find(dv => dv.MaVach && dv.MaVach === term);
                 if (barcodeMatch) {
                     blockNextSoLoEnter = true;
@@ -972,18 +971,26 @@ function initializePharmacyModule(app) {
                     return;
                 }
             
-                // For text search, require at least 1 character
                 if (term.length < 1) { 
                     thuocSuggestionsDiv.style.display = 'none';
                     return;
                 }
             
                 const normalizedTerm = removeDiacritics(term.toLowerCase());
-                const results = danhMucThuoc.filter(thuoc => 
-                   removeDiacritics(thuoc.TenThuoc.toLowerCase()).includes(normalizedTerm) ||
-                   (thuoc.HoatChat && removeDiacritics(thuoc.HoatChat.toLowerCase()).includes(normalizedTerm)) ||
-                   (thuoc.SoDangKy && thuoc.SoDangKy.toLowerCase().includes(term.toLowerCase()))
-                );
+                
+                const results = danhMucThuoc.filter(thuoc => {
+                    const tenThuoc = thuoc.TenThuoc ? String(thuoc.TenThuoc) : '';
+                    const hoatChat = thuoc.HoatChat ? String(thuoc.HoatChat) : '';
+                    const soDangKy = thuoc.SoDangKy ? String(thuoc.SoDangKy) : '';
+
+                    const tenThuocNorm = removeDiacritics(tenThuoc.toLowerCase());
+                    const hoatChatNorm = removeDiacritics(hoatChat.toLowerCase());
+                    const soDangKyNorm = removeDiacritics(soDangKy.toLowerCase());
+
+                    return tenThuocNorm.includes(normalizedTerm) ||
+                           hoatChatNorm.includes(normalizedTerm) ||
+                           soDangKyNorm.includes(normalizedTerm);
+                });
             
                 if (results.length > 0) {
                     thuocSuggestionsDiv.innerHTML = results.slice(0, 10).map((r, index) => 
