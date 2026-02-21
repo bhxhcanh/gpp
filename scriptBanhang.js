@@ -601,14 +601,41 @@ function initializeSalesModule(app) {
                  drugPriceInput.value = formatNumber(price);
             });
             
+            const showSuggestions = () => {
+                const term = drugSearchInput.value.trim();
+                if (term.length < 2) {
+                    drugSuggestionsDiv.style.display = 'none';
+                    return;
+                }
+                const normalizedTerm = removeDiacritics(term.toLowerCase());
+                let results = danhMucThuoc.filter(thuoc => {
+                    return removeDiacritics(thuoc.TenThuoc.toLowerCase()).includes(normalizedTerm) ||
+                           (thuoc.HoatChat && removeDiacritics(thuoc.HoatChat.toLowerCase()).includes(normalizedTerm)) ||
+                           (thuoc.SoDangKy && removeDiacritics(thuoc.SoDangKy.toLowerCase()).includes(normalizedTerm));
+                });
+                results.sort((a, b) => (inventoryMap.get(b.MaThuoc) || 0) - (inventoryMap.get(a.MaThuoc) || 0));
+
+                if (results.length > 0) {
+                    drugSuggestionsDiv.innerHTML = results.slice(0, 10).map((thuoc, index) => {
+                        const stock = inventoryMap.get(thuoc.MaThuoc) || 0;
+                        const stockDisplay = stock > 0 ? `(Tồn: ${stock})` : '(Hết hàng)';
+                        return `<div class="suggestion-item ${index === 0 ? 'selected' : ''}" data-ma-thuoc="${thuoc.MaThuoc}">
+                            <strong>${thuoc.TenThuoc} <span style="color: ${stock > 0 ? 'var(--success-color)' : 'var(--danger-color)'};">${stockDisplay}</span></strong><br>
+                            <small>${thuoc.HoatChat || ''} ${thuoc.HamLuong || ''} - SĐK: ${thuoc.SoDangKy || 'N/A'}</small>
+                        </div>`;
+                    }).join('');
+                    drugSuggestionsDiv.style.display = 'block';
+                } else {
+                    drugSuggestionsDiv.style.display = 'none';
+                }
+            };
+
             drugSearchInput.addEventListener('input', () => {
                 const term = drugSearchInput.value.trim();
-                const normalizedTerm = removeDiacritics(term.toLowerCase());
-                lotInfoContainer.classList.add('hidden'); // Hide lot info when searching
-
+                lotInfoContainer.classList.add('hidden');
                 const barcodeMatch = donViQuyDoi.find(dv => dv.MaVach && dv.MaVach === term);
                 if(barcodeMatch) {
-                    blockNextQuantityEnter = true; // Set flag for barcode scan
+                    blockNextQuantityEnter = true;
                     selectDrug(barcodeMatch.MaThuoc);
                     drugUnitSelect.value = barcodeMatch.DonViTinh;
                     drugUnitSelect.dispatchEvent(new Event('change'));
@@ -616,30 +643,14 @@ function initializeSalesModule(app) {
                     drugQuantityInput.select();
                     return;
                 }
+                showSuggestions();
+            });
 
-                if (term.length < 2) {
+            drugSearchInput.addEventListener('focus', showSuggestions);
+            document.addEventListener('click', function(event) {
+                if (!drugSearchInput.contains(event.target) && !drugSuggestionsDiv.contains(event.target)) {
                     drugSuggestionsDiv.style.display = 'none';
-                    return;
                 }
-                
-                let results = danhMucThuoc.filter(thuoc => {
-                    return removeDiacritics(thuoc.TenThuoc.toLowerCase()).includes(normalizedTerm) ||
-                           (thuoc.HoatChat && removeDiacritics(thuoc.HoatChat.toLowerCase()).includes(normalizedTerm)) ||
-                           (thuoc.SoDangKy && removeDiacritics(thuoc.SoDangKy.toLowerCase()).includes(normalizedTerm));
-                });
-                
-                // Prioritize items in stock
-                results.sort((a, b) => (inventoryMap.get(b.MaThuoc) || 0) - (inventoryMap.get(a.MaThuoc) || 0));
-
-                drugSuggestionsDiv.innerHTML = results.slice(0, 10).map((thuoc, index) => {
-                    const stock = inventoryMap.get(thuoc.MaThuoc) || 0;
-                    const stockDisplay = stock > 0 ? `(Tồn: ${stock})` : '(Hết hàng)';
-                    return `<div class="suggestion-item ${index === 0 ? 'selected' : ''}" data-ma-thuoc="${thuoc.MaThuoc}">
-                        <strong>${thuoc.TenThuoc} <span style="color: ${stock > 0 ? 'var(--success-color)' : 'var(--danger-color)'};">${stockDisplay}</span></strong><br>
-                        <small>${thuoc.HoatChat || ''} ${thuoc.HamLuong || ''} - SĐK: ${thuoc.SoDangKy || 'N/A'}</small>
-                    </div>`;
-                }).join('');
-                drugSuggestionsDiv.style.display = results.length > 0 ? 'block' : 'none';
             });
             
             drugSuggestionsDiv.addEventListener('click', e => {
