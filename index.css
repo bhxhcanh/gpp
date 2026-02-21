@@ -687,14 +687,14 @@ th[data-sort-key].sorted.desc .sort-icon::before {
     top: 100%;
     left: 0;
     right: 0;
-    background: white;
+    background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-top: none;
     border-radius: 0 0 var(--border-radius) var(--border-radius);
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 100;
     box-shadow: var(--shadow);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it's on top */
 }
 .suggestion-item {
     padding: 10px 15px;
