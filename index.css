@@ -798,6 +798,41 @@ th[data-sort-key].sorted.desc .sort-icon::before {
     .sidebar-header, .sidebar-footer { display: none; }
     .sidebar-nav ul { display: flex; padding: 0; margin: 0; }
     .sidebar-nav .nav-link { justify-content: center; flex-direction: column; padding: 10px; margin: 0 5px;}
+
+/* Suggestions Dropdown */
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: var(--shadow);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it's on top */
+}
+
+.suggestion-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover, .suggestion-item.selected {
+    background-color: var(--bg-color);
+}
+
+.suggestion-item small {
+    color: var(--secondary-color);
+}
+
     .sidebar-nav .nav-link .material-symbols-outlined { margin: 0 0 5px 0; }
     
     .main-wrapper {
